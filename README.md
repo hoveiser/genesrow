@@ -25,6 +25,21 @@ A decentralized escrow smart contract with **real payable custody** that uses **
 - `funded` → `delivered` → `released` (client approves, payout to freelancer)
 - `delivered` → `disputed` → AI verdict → `released` or `refunded` (payout to winner)
 
+## 🧪 How to Try It Yourself (step by step)
+
+1. Open https://studio.genlayer.com and connect your wallet (Bradbury testnet).
+2. Create a new contract and paste the full code from `contract.py` (keep the two header lines Studio generates).
+3. Click **Deploy new instance** (Execution Mode: Normal / Full Consensus).
+4. In **Write Methods**, call `create_escrow` with a small value (e.g. 2 GEN):
+   - freelancer: your own wallet address
+   - job_description: "A web page that displays an animated spinner with GenLayer branding"
+   - deliverable_url: "https://hoveiser.github.io/hoveiser-genlayer-spinner/"
+5. Call `mark_delivered(1)`.
+6. Happy path: call `approve(1)` → funds released; check `contract_balance` returns 0.
+7. AI path: on another escrow, call `dispute(2)` then `resolve(2)` → validators fetch the URL and vote; check `get_escrow(2)` for status, ai_verdict and ai_reasoning.
+8. Mismatch: create an escrow with job_description "A Python backend API with Flask" and the same spinner URL → dispute → resolve → expect REFUNDED.
+9. Verify every step on the explorer using the tx links on the demo site.
+
 ## 🧪 Test Matrix (All on Bradbury with Real GEN)
 
 Every transaction below is verifiable on-chain. Click the hashes to view on GenLayer Explorer.
