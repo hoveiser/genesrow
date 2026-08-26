@@ -1,178 +1,95 @@
 # 🔐 GenEscrow
 
-**AI-Powered Escrow with Real Payable Custody on GenLayer — v1.0.0**
+**AI-adjudicated escrow with sealed, hash-verified evidence on GenLayer — v1.1.1**
 
-A decentralized escrow smart contract with **real payable custody** that uses **AI validators** to adjudicate disputes between freelancers and clients. No human middlemen, no delays, no trust required.
+A decentralized escrow with real payable custody where AI validators adjudicate disputes, and the deliverable evidence is cryptographically sealed on-chain at delivery time, then verified against the fetched content at adjudication time.
 
 ## 📋 Contract Details
 
 - **Network:** GenLayer Testnet Bradbury (LIVE)
-- **Current Version:** v1.0.0
-- **Contract Address:** `0x020BEbbFA37b421F44Cc14ED485467969454f82D`
-- **Explorer:** [View on GenLayer Explorer](https://explorer-studio.genlayer.com/address/0x020BEbbFA37b421F44Cc14ED485467969454f82D)
-- **Validators:** Mistral, Gemini, Kimi (real AI models on Bradbury)
+- **Current Version:** v1.1.1
+- **Contract Address:** `0x74300cc91f3E13e65822b919060f270d2bCE4194`
+- **Explorer:** [View on GenLayer Explorer](https://explorer-studio.genlayer.com/address/0x74300cc91f3E13e65822b919060f270d2bCE4194)
 
 ## 🗺 Deployment History
 
 | Version | Address | Purpose |
 |---|---|---|
-| **v1.0.0** (CURRENT) | `0x020BEbbFA37b421F44Cc14ED485467969454f82D` | Stable release with improved AI adjudication |
-| v8.0 | `0xD4b28ce39A28fc5d4c43d9e85F1C4D3d6Eb5A815` | Safety mechanisms test suite (rounds 1-3) |
+| **v1.1.1** (CURRENT) | `0x74300cc91f3E13e65822b919060f270d2bCE4194` | Sealed evidence + clean nondet closure |
+| v1.1.0 | `0xAb243A38564BC2A3E3F738184b3A60E817A78337` | Evidence binding test suite (seal / verify / mismatch) |
+| v1.0.0 | `0x020BEbbFA37b421F44Cc14ED485467969454f82D` | AI adjudication on visible text |
+| v8.0 | `0xD4b28ce39A28fc5d4c43d9e85F1C4D3d6Eb5A815` | Safety mechanisms (timeouts, retry, appeal) |
 
-## 🎯 How It Works
+## 🔏 Sealed Evidence Binding (the core guarantee)
 
-1. **Client** creates an escrow with agreed acceptance criteria and deposits GEN tokens (payable)
-2. **Freelancer** marks work as delivered (provides URL + evidence hash, immutable)
-3. **Client** can approve → funds released to freelancer via on-chain transfer
-4. If client stays silent → freelancer can trigger `timeout_release` after approve window
-5. If a **dispute** arises → AI validators fetch the deliverable URL, inspect visible text content, and vote APPROVED or REFUNDED
-6. Losing party can **appeal** once within appeal window → second AI round is final
-7. **Consensus reached** via `gl.eq_principle.strict_eq` → funds released or refunded automatically
+Previous review feedback asked for freelancer-submitted immutable evidence to be *verified*, not just stored. v1.1.x implements exactly that:
 
-### State Machine
+1. **Seal at delivery:** `mark_delivered(escrow_id, url)` fetches the deliverable inside `gl.eq_principle.strict_eq`, extracts the visible text, and stores `sha256(text)` on-chain as `evidence_hash`. If the URL is not fetchable at delivery time, delivery is rejected.
+2. **Verify at adjudication:** `resolve` fetches the URL again, recomputes the hash, and compares it with the sealed hash **before** any AI judgment.
+3. **If the page changed after delivery:** verdict is `EVIDENCE_MISMATCH` → automatic refund; the mutated live content is never trusted or judged.
+4. **If the hash matches:** the AI judges the verified content against the agreed `acceptance_criteria`.
 
-- `funded` → `delivered` → `released` (client approves or timeout)
-- `delivered` → `disputed`/`review` → AI verdict → `adjudicated` → `released` or `refunded`
-- `delivered` → `unresolvable` (3 fetch failures) → `timeout_refund` or `agree_release`
+This makes the evidence immutable and binding: mutable page content can no longer determine the verdict.
 
-## 🧪 Test Results (All on Bradbury with Real GEN)
+## 🧪 Test Matrix (all on Bradbury, verifiable on-chain)
 
-Every transaction below is verifiable on-chain. Click the hashes to view on GenLayer Explorer.
+### v1.1.1 — current contract
 
-### ✅ Test 1: Happy Path — Client Approves
+| Test | Result | Key tx |
+|---|---|---|
+| Happy path: seal + approve | `released`, hash `266d635b…` sealed | [approve](https://explorer-studio.genlayer.com/tx/0x79d3c7ccb4e45a5b0afa83caa4d4a4b419e609e8b10fb1e962d5754a4da8830a) |
+| AI adjudication (refund path) with clean validator logs | `refunded` per AI verdict; payout executed | [resolve](https://explorer-studio.genlayer.com/tx/0x92cfa94f63034f660c9c64365d384c4c06b972454b1adedd7f771684c64e25f) |
 
-- **Contract:** v8.0 (`0xD4b28ce39A28fc5d4c43d9e85F1C4D3d6Eb5A815`)
-- **Amount:** 3 GEN
-- **Job:** Round 1 corner case test
-- **Approve TX:** [`0x8c30a2be...cebf2079`](https://explorer-studio.genlayer.com/tx/0x8c30a2bebcb5e530feaa39f60a18f8f88e5965b198b7fbc7d1743fd9cebf2079)
-- **Result:** `released` — 3 GEN transferred to freelancer
-- **AI Verdict:** `CLIENT_APPROVED` (no AI involved)
+Note: AI verdicts can vary across validator model mixes (inherent to LLM adjudication). The contract handles both outcomes symmetrically and safely; the appeal mechanism allows the losing party to contest.
 
-### ✅ Test 2: AI Approves (Match)
+### v1.1.0 — evidence binding suite
 
-- **Contract:** v1.0.0 (`0x020BEbbFA37b421F44Cc14ED485467969454f82D`)
-- **Amount:** 2 GEN
-- **Job:** Build a static HTML webpage that displays a rotating spinner animation using CSS
-- **URL:** https://hoveiser.github.io/hoveiser-genlayer-spinner/
-- **Resolve TX:** [`0x189be5b1...eeda65`](https://explorer-studio.genlayer.com/tx/0x189be5b1b23e1bc358d74c6810d818c73b0ff66ce451eee0811dfa7936eeda65)
-- **Result:** `released` — 2 GEN transferred to freelancer
-- **AI Verdict:** `APPROVED`
-- **AI Reasoning:** AI validators fetched the deliverable and voted APPROVED.
+| Test | Result | Key tx |
+|---|---|---|
+| Seal + client approve | `released` with sealed hash | [approve](https://explorer-studio.genlayer.com/tx/0xf10be4d0dd02a2b67c48d0462e2e1449c010aed57e30c5b01eecb2af1) |
+| AI approves verified deliverable | `APPROVED` → released | [resolve](https://explorer-studio.genlayer.com/tx/0xdca4ef4e6b53434617d0d38c30c5171c4470f4c04b3ae0e2b5736c0f9c8f48b0) |
+| **Page mutated after delivery** | `EVIDENCE_MISMATCH` → refund, live content not trusted | [resolve](https://explorer-studio.genlayer.com/tx/0xf493a42f8d6799836eb7b2338ea79af4b6190cf957288b0f3cb01264ed356d60) |
+| Dead URL at delivery | rejected: "not fetchable at delivery time" | [mark_delivered](https://explorer-studio.genlayer.com/tx/0x9d9859311d9da57f30f3e1f98830f81a0c3a111ddf20583f7e174fd2a9cd0464) |
 
-### ✅ Test 3: AI Refunds (Mismatch)
+### v1.0.0 — AI adjudication on visible text
 
-- **Contract:** v1.0.0 (`0x020BEbbFA37b421F44Cc14ED485467969454f82D`)
-- **Amount:** 6 GEN
-- **Job:** A Python backend API with Flask
-- **URL:** https://hoveiser.github.io/hoveiser-genlayer-spinner/ (HTML/CSS spinner, NOT a Flask API)
-- **Resolve TX:** [`0x92284c49...02b6d81e`](https://explorer-studio.genlayer.com/tx/0x92284c49eb16343873fbca1501d7189e7631294426831d16e103fe4f02b6d81e)
-- **Result:** `refunded` — 6 GEN returned to client
-- **AI Verdict:** `REFUNDED`
-- **AI Reasoning:** AI validators fetched the deliverable and voted REFUNDED.
+| Test | Result | Key tx |
+|---|---|---|
+| Match (spinner vs spinner spec) | `APPROVED` → released | [resolve](https://explorer-studio.genlayer.com/tx/0x189be5b1b23e1bc358d74c6810d818c73b0ff66ce451eee0811dfa7936eeda65) |
+| Mismatch (Flask job vs spinner page) | `REFUNDED` | [resolve](https://explorer-studio.genlayer.com/tx/0x92284c49eb16343873fbca1501d7189e7631294426831d16e103fe4f02b6d81e) |
 
-### ✅ Test 4: AI Refunds (URL Unreachable + Retry + Timeout)
+### v8.0 — safety mechanisms
 
-- **Contract:** v8.0 (`0xD4b28ce39A28fc5d4c43d9e85F1C4D3d6Eb5A815`)
-- **Amount:** 4 GEN
-- **Job:** Round 2 retry test
-- **URL:** https://no-such-domain-xyz123.example.com/x (fake domain)
-- **Resolve TX (3 attempts):** [`0x8d64a618...df5424`](https://explorer-studio.genlayer.com/tx/0x8d64a6180d8d6eecb5b57b132dcda89fe14f58fe1ba124769ca12e7110df5424), [`0xfe6b3d88...48f66a`](https://explorer-studio.genlayer.com/tx/0xfe6b3d8806d0b33ebd1962b7afe92bb349dd48bfda5b61c56ca8017d4748f66a), [`0x60ba96a8...a9889`](https://explorer-studio.genlayer.com/tx/0x60ba96a8f9e8f9e8a9cb28fd92c9784a791e52f6e2e62ce665c63510359a9889)
-- **Timeout TX:** [`0x9d1959ca...5d3f0`](https://explorer-studio.genlayer.com/tx/0x9d1959ca0968260f57d3d1346fdab43b487f4eb11b8c1d5c92c74554adc5d3f0)
-- **Result:** `refunded` — 4 GEN returned to client
-- **AI Verdict:** `TIMEOUT_REFUNDED`
-- **AI Reasoning:** Deliverable unreachable after retries and safety window; refunded to client.
-
-### ✅ Test 5: Appeal + Finalize
-
-- **Contract:** v8.0 (`0xD4b28ce39A28fc5d4c43d9e85F1C4D3d6Eb5A815`)
-- **Amount:** 2 GEN
-- **Job:** A web page that displays an animated spinner with GenLayer branding
-- **Resolve TX (round 1):** [`0x974ead07...00370f`](https://explorer-studio.genlayer.com/tx/0x974ead07ebdfcb1c96aec8d4c81b2b13aa36c4a8e5dbd4b592e61aa9d800370f)
-- **Appeal TX:** [`0x9e2b4764...f9a6`](https://explorer-studio.genlayer.com/tx/0x9e2b47644c50ccb5d9c129777ff67096dcb7b9c35c67921c7c32d9fdf76af9a6)
-- **Resolve TX (round 2 final):** [`0x235a1eb2...ea858`](https://explorer-studio.genlayer.com/tx/0x235a1eb2243a582e0fdeb2c44e6e0c170aed3aaf9f7f531c38a94da80d8ea858)
-- **Finalize TX:** [`0x1b2d1d77...c5816`](https://explorer-studio.genlayer.com/tx/0x1b2d1d774c523fa36b6005cfd1dce598a03244abd16748ce75d273f34f2c5816)
-- **Result:** `refunded` — 2 GEN returned to client
-- **AI Verdict:** `REFUNDED`
-- **AI Reasoning:** FINAL appeal round: AI validators fetched the deliverable and voted REFUNDED.
-
-### 🛡️ Safety Guards (Manually Verified)
-
-- **Premature timeout_release:** Call before approve window closes → `AssertionError: Approve window still open`
-- **Duplicate mark_delivered:** Call after delivery → `AssertionError: Not funded` (immutable evidence)
-- **Unauthorized mark_delivered:** Non-freelancer calls → `AssertionError: Only the freelancer`
-- **Premature approve:** Call before delivered → `AssertionError: Not delivered`
+- Client-silence timeout (`timeout_release`), premature-timeout guard, immutable-delivery guard: [timeout guard](https://explorer-studio.genlayer.com/tx/0x468009efc7b8b562e18663f4077ad304658137ec839d5d207b7e9713212aa66f)
+- Retry (3 attempts) + safety window + timeout refund: [timeout_refund](https://explorer-studio.genlayer.com/tx/0x9d1959ca0968260f57d3d1346fdab43b487f4eb11b8c1d5c92c74554adc5d3f0)
+- Appeal + final AI round + finalize: [appeal](https://explorer-studio.genlayer.com/tx/0x9e2b47644c50ccb5d9c129777ff67096dcb7b9c35c67921c7c32d9fdf76af9a6)
 
 ## 💡 Technical Implementation
 
-### Payable Custody + Payout
+- **Payable custody:** `@gl.public.write.payable` + `gl.wasi.get_self_balance()` + on-chain transfers via `gl_call_generic({'EthSend': ...})`
+- **Sealed evidence:** consensus `sha256` of extracted visible text at delivery; re-verified at adjudication
+- **Consensus-safe time:** `gl.message_raw["datetime"]` for approve/appeal/safety windows
+- **AI adjudication:** visible-text extraction (style/script/tags stripped) → `gl.nondet.exec_prompt` → canonical one-word verdict → `gl.eq_principle.strict_eq`
+- **Safety:** retry with failure counting (no auto-payout on transient failure), one-shot appeal, mutual `agree_release`, authorization checks on every write method
 
-- `@gl.public.write.payable` decorator on `create_escrow` → contract receives and holds real GEN
-- `gl.wasi.get_self_balance()` → tracks contract solvency
-- Internal `gl_call_generic({'EthSend': {...}})` → performs on-chain transfer to winner
-- Balance tracked via `contract_balance` and `get_total_locked` views
+## 🧪 How to Try It Yourself
 
-### Time-Based Safety Mechanisms
-
-- `gl.message_raw["datetime"]` → consensus-safe timestamp (per Pavel Kolosov's guidance)
-- `approve_window_sec` → auto-release to freelancer if client stays silent
-- `appeal_window_sec` → time-bound appeal window for losing party
-- `unresolvable_at` → safety window before timeout refund
-
-### AI-Powered Adjudication
-
-- Validators fetch deliverable via `gl.nondet.web.get(url)`
-- **Visible text extraction** (HTML tags and CSS removed) → AI reads meaningful content, not raw markup
-- Content passed to AI via `gl.nondet.exec_prompt(prompt)` with acceptance criteria
-- Binary verdict (APPROVED/REFUNDED/UNREACHABLE) used for consensus via `gl.eq_principle.strict_eq`
-- **Critical design decision:** Only the canonical verdict (single word) goes into consensus block — not the free-form reasoning text — to prevent non-determinism across different LLM providers
-
-### Immutable Evidence & Retry
-
-- Freelancer submits `deliverable_url` + `evidence_hash` via `mark_delivered` → immutable after delivery
-- Up to 3 fetch attempts before `unresolvable` → no automatic payout on transient failures
-- `agree_release` → mutual agreement to break deadlocks
-
-### Authorization & State Machine
-
-- `gl.message.sender_address == Address(...)` checks (case-insensitive via Address type)
-- Strict state transitions enforced via `assert` guards
-- Appeal limited to losing party, once per escrow
-
-### Consensus & Determinism
-
-- `gl.eq_principle.strict_eq` ensures all validators agree on identical canonical output
-- Binary verdicts (not free text) guarantee deterministic consensus
-- Reasoning stored separately after consensus, for transparency
-
-## 🧪 How to Try It Yourself (step by step)
-
-1. Open https://studio.genlayer.com and connect your wallet (Bradbury testnet).
-2. Create a new contract and paste the full code from `contract.py` (keep the two header lines Studio generates).
-3. Click **Deploy new instance** (Execution Mode: Normal / Full Consensus).
-4. In **Write Methods**, call `create_escrow` with a small value (e.g. 2 GEN):
-   - freelancer: your own wallet address
-   - job_description: "Build a static HTML webpage that displays a rotating spinner animation using CSS"
-   - acceptance_criteria: "The page must contain an animated spinner element that rotates continuously"
-   - approve_window_sec: 120
-   - appeal_window_sec: 120
-5. Call `mark_delivered(1, "https://hoveiser.github.io/hoveiser-genlayer-spinner/", "my-evidence-hash")`.
-6. Happy path: call `approve(1)` → funds released; check `contract_balance` returns 0.
-7. AI path: on another escrow, call `dispute(2)` then `resolve(2)` → validators fetch the URL and vote; check `get_escrow(2)` for status, ai_verdict and ai_reasoning.
-8. Mismatch: create an escrow with job_description "A Python backend API with Flask" and the same spinner URL → dispute → resolve → expect REFUNDED.
-9. Timeout: create an escrow, mark delivered, wait 2 minutes, then call `timeout_release` → expect RELEASED to freelancer.
-10. Verify every step on the explorer using the tx links above.
+1. Open https://studio.genlayer.com and deploy `contract.py`.
+2. `create_escrow(freelancer, description, acceptance_criteria, approve_window_sec, appeal_window_sec)` with GEN value.
+3. `mark_delivered(1, "<deliverable URL>")` — the contract seals the evidence hash on-chain.
+4. Happy path: `approve(1)`.
+5. AI path: `dispute(1)` → `resolve(1)` → check `get_escrow(1)` for `ai_verdict`, `evidence_hash`, `ai_reasoning`.
+6. Try mutating the deliverable page after delivery and calling `resolve` again on a new escrow → expect `EVIDENCE_MISMATCH`.
 
 ## 📂 Files
 
-- `contract.py` — GenEscrow smart contract source code (v1.0.0)
-- `README.md` — This documentation
+- `contract.py` — GenEscrow source (v1.1.1)
+- `README.md` — this documentation
 
-## 🌐 Related Work
+## 🌐 Related
 
-- **GenLayer Spinner Design:** [hoveiser-genlayer-spinner](https://github.com/hoveiser/hoveiser-genlayer-spinner)
-- **Frontend Demo:** [genesrow-frontend](https://github.com/hoveiser/genesrow-frontend)
-- **GenLayer Studio:** https://studio.genlayer.com
-- **GenLayer Docs:** https://docs.genlayer.com
+- Demo site: https://hoveiser.github.io/genesrow-frontend/
+- Deliverable used in tests: https://hoveiser.github.io/hoveiser-genlayer-spinner/
 
 ## License
 
