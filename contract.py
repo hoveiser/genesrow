@@ -5,9 +5,16 @@ from genlayer import *
 import json
 import datetime as _dt
 import re as _re
+import hashlib as _hashlib
 import genlayer.gl._internal.gl_call as _glc
 
 MAX_FETCH_FAILURES = 3
+
+def _clean_text(body: bytes) -> str:
+    raw = body.decode("utf-8", errors="ignore")
+    raw = _re.sub(r"(?s)<(style|script).*?</\1>", " ", raw)
+    text = _re.sub(r"<[^>]+>", " ", raw)
+    return _re.sub(r"\s+", " ", text).strip()
 
 class GenEscrow(gl.Contract):
     escrows: TreeMap[str, str]
@@ -28,6 +35,15 @@ class GenEscrow(gl.Contract):
             {'EthSend': {'address': Address(to_addr), 'calldata': b'', 'value': amount}},
             lambda _x: None,
         ).get()
+
+    def _seal_hash(self, url: str) -> str:
+        def get_hash() -> str:
+            try:
+                response = gl.nondet.web.get(url)
+                return _hashlib.sha256(_clean_text(response.body).encode("utf-8")).hexdigest()
+            except Exception:
+                return "FETCH_FAILED"
+        return gl.eq_principle.strict_eq(get_hash)
 
     @gl.public.write.payable
     def create_escrow(self, freelancer: str, job_description: str, acceptance_criteria: str, approve_window_sec: int, appeal_window_sec: int):
@@ -76,14 +92,16 @@ class GenEscrow(gl.Contract):
         self._payout(data["client"], data["amount"])
 
     @gl.public.write
-    def mark_delivered(self, escrow_id: int, deliverable_url: str, evidence_hash: str):
+    def mark_delivered(self, escrow_id: int, deliverable_url: str):
         data = json.loads(self.escrows[str(escrow_id)])
         assert gl.message.sender_address == Address(data["freelancer"]), "Only the freelancer"
         assert data["status"] == "funded", "Not funded"
         assert len(deliverable_url) > 0, "URL required"
+        sealed = self._seal_hash(deliverable_url)
+        assert sealed != "FETCH_FAILED", "Deliverable URL not fetchable at delivery time"
         data["status"] = "delivered"
         data["deliverable_url"] = deliverable_url
-        data["evidence_hash"] = evidence_hash
+        data["evidence_hash"] = sealed
         data["delivered_at"] = self._now()
         self.escrows[str(escrow_id)] = json.dumps(data)
 
@@ -131,16 +149,16 @@ class GenEscrow(gl.Contract):
         def get_verdict() -> str:
             try:
                 response = gl.nondet.web.get(data["deliverable_url"])
-                raw = response.body.decode("utf-8", errors="ignore")
-                raw = _re.sub(r"(?s)<(style|script).*?</\1>", " ", raw)
-                text = _re.sub(r"<[^>]+>", " ", raw)
-                text = _re.sub(r"\s+", " ", text).strip()[:3000]
+                text = _clean_text(response.body)
+                fetched_hash = _hashlib.sha256(text.encode("utf-8")).hexdigest()
+                if fetched_hash != data["evidence_hash"]:
+                    return "MISMATCH"
                 prompt = (
                     "You are an impartial escrow adjudicator for GenLayer.\n"
                     f"Job description: {data['description']}\n"
                     f"Agreed acceptance criteria: {data['acceptance_criteria']}\n"
-                    f"Freelancer-submitted evidence hash: {data['evidence_hash']}\n\n"
-                    f"Deliverable page visible text:\n{text}\n\n"
+                    f"Sealed evidence hash (verified against fetched content): {data['evidence_hash']}\n\n"
+                    f"Deliverable page visible text:\n{text[:3000]}\n\n"
                     "Does the deliverable satisfy the acceptance criteria? "
                     "Answer with ONE word only: APPROVED or REFUNDED."
                 )
@@ -166,6 +184,15 @@ class GenEscrow(gl.Contract):
             else:
                 data["ai_reasoning"] = "Fetch failed (attempt " + str(data["fetch_failures"]) + " of 3); retry allowed, no automatic payout"
             self.escrows[str(escrow_id)] = json.dumps(data)
+            return
+        if verdict == "MISMATCH":
+            data["status"] = "refunded"
+            data["ai_verdict"] = "EVIDENCE_MISMATCH"
+            data["ai_reasoning"] = "Fetched content hash differs from sealed evidence hash; deliverable changed after submission; live content not trusted"
+            data["winner"] = "client"
+            self.total_locked = str(int(self.total_locked) - data["amount"])
+            self.escrows[str(escrow_id)] = json.dumps(data)
+            self._payout(data["client"], data["amount"])
             return
         is_appeal = data["appeals_used"] > 0
         data["ai_verdict"] = verdict
