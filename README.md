@@ -152,6 +152,12 @@ A decentralized escrow smart contract on GenLayer where deliverables must be aut
 - One-shot appeal for losing party
 - Mutual settlement via `agree_release`
 
+## 🧰 Checked-in Regression Harness
+
+`tests/` contains a pytest harness built on the official GenLayer Testing Suite (Direct Mode):
+injection, mutation (MISMATCH), fetch-failure, and authenticity-guard tests with mocked web/LLM,
+plus unit tests for the URL whitelist and sanitize helpers. Run with `pip install genlayer-test && pytest tests/ -v`.
+
 ## ⚠️ Threat Model
 
 ### Closed
