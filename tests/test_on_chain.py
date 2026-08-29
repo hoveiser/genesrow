@@ -17,21 +17,27 @@ import json
 
 EXPLORER = "https://explorer-studio.genlayer.com"
 TX_URL = EXPLORER + "/api/v1/tx/{}"
+CONTRACT_URL = EXPLORER + "/api/v1/contract/{}"
+USER_AGENT = "GenEscrow-Regression-Harness/1.2.0"
 
 # Reference contract: v1.2.0
 CONTRACT = "0xcC90a61f34ACD2C7773901Ca50290f6801F0078D"
 
 
-def _get_tx(tx_hash):
-    with urllib.request.urlopen(TX_URL.format(tx_hash), timeout=10) as r:
+def _get_json(url):
+    req = urllib.request.Request(url)
+    req.add_header("User-Agent", USER_AGENT)
+    with urllib.request.urlopen(req, timeout=10) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def _get_tx(tx_hash):
+    return _get_json(TX_URL.format(tx_hash))
 
 
 def test_reference_contract_is_deployed():
     """Reference v1.2.0 contract exists on Bradbury."""
-    url = EXPLORER + "/api/v1/contract/" + CONTRACT
-    with urllib.request.urlopen(url, timeout=10) as r:
-        data = json.loads(r.read().decode("utf-8"))
+    data = _get_json(CONTRACT_URL.format(CONTRACT))
     assert data["address"].lower() == CONTRACT.lower()
 
 
