@@ -13,7 +13,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: pip install pytest genlayer-test
+        run: pip install pytest
 
-      - name: Run regression harness
+      - name: Run test_guards + test_on_chain
         run: pytest tests/ -v
