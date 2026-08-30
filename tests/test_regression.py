@@ -22,7 +22,7 @@ VALUE = 2 * 10**18
 
 
 def _deploy(direct_vm):
-    return deploy_contract("contract.py", direct_vm, sdk_version=SDK_VERSION)
+    return deploy_contract("contracts/contract.py", direct_vm, sdk_version=SDK_VERSION)
 
 
 def _create(c, freelancer, desc="job", criteria="page must load", owner="hoveiser", repo="genesrow", path="contract.py"):
