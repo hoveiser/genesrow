@@ -6,8 +6,8 @@ import json
 import types
 
 VALUE = 2 * 10**18
-ARTIFACT_V1 = "evidence content version 1"
-ARTIFACT_V2 = "evidence content version 2 - MUTATED"
+ARTIFACT_V1 = "evidence content version 1 - must be at least 20 chars"
+ARTIFACT_V2 = "evidence content version 2 - MUTATED after submission"
 
 
 def _addr_hex(addr_bytes):
@@ -53,7 +53,7 @@ def _msg(sender, value=0):
 
 
 def _patch_runtime():
-    """Patch gl.wasi, gl_call_generic, Address, eq_principle, and nondet for in-memory testing"""
+    """Patch gl.wasi, gl_call_generic, Address, eq_principle, and vm for in-memory testing"""
     import genlayer.gl as gl
     import genlayer.gl._internal.gl_call as gl_call
     import genlayer
@@ -83,13 +83,13 @@ def _patch_runtime():
     def fake_run_nondet_unsafe(leader_fn, validator_fn):
         """Just run leader_fn and return its result"""
         result = leader_fn()
-        return types.SimpleNamespace(
-            __getitem__=lambda self, key: result.get(key) if isinstance(result, dict) else None
-        )
+        if isinstance(result, dict):
+            return result
+        return {"verdict": result}
     
     gl.vm = types.SimpleNamespace(
         run_nondet_unsafe=fake_run_nondet_unsafe,
-        Return=lambda x: x
+        Return=type('Return', (), {})
     )
 
 
@@ -144,7 +144,7 @@ def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob)
     
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     with pytest.raises(AssertionError) as exc_info:
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     assert "Wrong repository" in str(exc_info.value)
@@ -182,7 +182,7 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     # mark_delivered with ARTIFACT_V1
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
@@ -191,7 +191,7 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     c.dispute(1)
     
     # resolve with ARTIFACT_V2 (mutated)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V2))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V2))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -217,7 +217,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
@@ -227,7 +227,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     
     # resolve with LLM returning REFUNDED
     direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -248,7 +248,7 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
@@ -258,7 +258,7 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     
     # resolve with LLM returning NOT APPROVED (should trigger fetch_failures)
     direct_vm.mock_llm(r".*", '{"verdict": "NOT APPROVED"}')
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -280,7 +280,7 @@ def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
+    direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # approve
