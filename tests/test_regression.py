@@ -15,12 +15,36 @@ def _addr_hex(addr_bytes):
     return "0x" + addr_bytes.hex()
 
 
+class FakeAddress:
+    """Mock Address class that can compare with strings"""
+    def __init__(self, value):
+        if isinstance(value, bytes):
+            self.hex = "0x" + value.hex()
+        elif isinstance(value, str):
+            self.hex = value.lower() if value.startswith("0x") else "0x" + value.lower()
+        else:
+            self.hex = str(value)
+    
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.hex.lower() == other.lower()
+        if hasattr(other, 'hex'):
+            return self.hex.lower() == other.hex.lower()
+        return False
+    
+    def __str__(self):
+        return self.hex
+    
+    def __repr__(self):
+        return self.hex
+
+
 def _msg(sender, value=0):
     """Set up gl.message and gl.message_raw"""
     import genlayer.gl as gl
     
     msg = types.SimpleNamespace()
-    msg.sender_address = sender
+    msg.sender_address = FakeAddress(sender)
     msg.value = value
     gl.message = msg
     
@@ -29,9 +53,10 @@ def _msg(sender, value=0):
 
 
 def _patch_runtime():
-    """Patch gl.wasi.get_self_balance and gl_call_generic for in-memory testing"""
+    """Patch gl.wasi, gl_call_generic, and Address for in-memory testing"""
     import genlayer.gl as gl
     import genlayer.gl._internal.gl_call as gl_call
+    import genlayer
     
     class FakeWasi:
         @staticmethod
@@ -43,6 +68,9 @@ def _patch_runtime():
     def fake_gl_call_generic(payload):
         return None
     gl_call.gl_call_generic = fake_gl_call_generic
+    
+    # Patch Address class to use FakeAddress
+    genlayer.Address = FakeAddress
 
 
 def _deploy(direct_deploy):
