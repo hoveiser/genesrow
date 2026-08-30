@@ -53,7 +53,7 @@ def _msg(sender, value=0):
 
 
 def _patch_runtime():
-    """Patch gl.wasi, gl_call_generic, and Address for in-memory testing"""
+    """Patch gl.wasi, gl_call_generic, Address, eq_principle, and nondet for in-memory testing"""
     import genlayer.gl as gl
     import genlayer.gl._internal.gl_call as gl_call
     import genlayer
@@ -71,6 +71,26 @@ def _patch_runtime():
     
     # Patch Address class to use FakeAddress
     genlayer.Address = FakeAddress
+    
+    # Mock eq_principle.strict_eq to just call the function directly
+    def fake_strict_eq(fn):
+        """Just call the function directly in tests (no multi-validator consensus)"""
+        return fn()
+    
+    gl.eq_principle = types.SimpleNamespace(strict_eq=fake_strict_eq)
+    
+    # Mock vm.run_nondet_unsafe to just call leader_fn and return its result
+    def fake_run_nondet_unsafe(leader_fn, validator_fn):
+        """Just run leader_fn and return its result"""
+        result = leader_fn()
+        return types.SimpleNamespace(
+            __getitem__=lambda self, key: result.get(key) if isinstance(result, dict) else None
+        )
+    
+    gl.vm = types.SimpleNamespace(
+        run_nondet_unsafe=fake_run_nondet_unsafe,
+        Return=lambda x: x
+    )
 
 
 def _deploy(direct_deploy):
@@ -144,7 +164,8 @@ def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, 
     _msg(direct_bob, 0)
     direct_vm.mock_web(r"nonexistent-xyz123", _mock_web_response(404, "Not Found"))
     with pytest.raises(AssertionError) as exc_info:
-        c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/nonexistent-xyz123/main/contract.py")
+        # URL must have full SHA to pass authentication check
+        c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/nonexistent-xyz123/0000000000000000000000000000000000000000/contract.py")
     assert "not fetchable at delivery time" in str(exc_info.value)
 
 
