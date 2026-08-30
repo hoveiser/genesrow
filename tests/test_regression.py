@@ -3,24 +3,25 @@ Regression tests for GenEscrow v1.2.0
 """
 import pytest
 import json
+import types
 
 VALUE = 2 * 10**18
 ARTIFACT_V1 = "evidence content version 1"
 ARTIFACT_V2 = "evidence content version 2 - MUTATED"
 
+
 def _msg(sender, value=0):
     """Set up gl.message and gl.message_raw"""
     import genlayer.gl as gl
-    import types
     
     msg = types.SimpleNamespace()
     msg.sender_address = sender
     msg.value = value
     gl.message = msg
     
-    raw = types.SimpleNamespace()
-    raw.datetime = "2026-08-30T12:00:00Z"
+    raw = {"datetime": "2026-08-30T12:00:00Z"}
     gl.message_raw = raw
+
 
 def _patch_runtime():
     """Patch gl.wasi.get_self_balance and gl_call_generic for in-memory testing"""
@@ -38,10 +39,17 @@ def _patch_runtime():
         return None
     gl_call.gl_call_generic = fake_gl_call_generic
 
+
+def _deploy(direct_deploy):
+    """Deploy contract with SDK v0.2.16"""
+    c = direct_deploy("contracts/contract.py", sdk_version="v0.2.16")
+    _patch_runtime()
+    return c
+
+
 def test_mutable_url_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
@@ -51,10 +59,10 @@ def test_mutable_url_rejected(direct_vm, direct_deploy, direct_alice, direct_bob
         c.mark_delivered(1, "https://hoveiser.github.io/hoveiser-genlayer-spinner/")
     assert "authenticated immutable artifact" in str(exc_info.value)
 
+
 def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "hoveiser", "fairpay", "contract.py", 120, 120)
@@ -65,10 +73,10 @@ def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob)
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     assert "Wrong repository" in str(exc_info.value)
 
+
 def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "", "", "", 120, 120)
@@ -79,10 +87,10 @@ def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, 
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/nonexistent-xyz123/main/contract.py")
     assert "not fetchable at delivery time" in str(exc_info.value)
 
+
 def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
@@ -104,10 +112,10 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     assert esc["ai_verdict"] == "EVIDENCE_MISMATCH"
     assert esc["status"] == "refunded"
 
+
 def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(
@@ -127,7 +135,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     c.dispute(1)
     
     # resolve with LLM returning REFUNDED
-    direct_vm.mock_llm(r"Python contract", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
+    direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
     direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
     c.resolve(1)
     
@@ -135,10 +143,10 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     assert esc["ai_verdict"] == "REFUNDED"
     assert esc["status"] == "adjudicated"
 
+
 def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
@@ -162,10 +170,10 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     assert esc["fetch_failures"] == 1
     assert esc["status"] == "disputed"
 
+
 def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
-    c = direct_deploy("contracts/contract.py", "v0.2.16")
-    _patch_runtime()
+    c = _deploy(direct_deploy)
     
     _msg(direct_alice, VALUE)
     c.create_escrow(direct_bob, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
