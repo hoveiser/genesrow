@@ -60,15 +60,24 @@ def _deploy(direct_deploy):
     return c
 
 
+def _mock_web_response(status, body):
+    """Create mock web response dict"""
+    return {"status": status, "body": body}
+
+
 def test_mutable_url_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    # Set sender for create_escrow
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
     
+    # Set sender for mark_delivered (must be bob)
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
     with pytest.raises(AssertionError) as exc_info:
         c.mark_delivered(1, "https://hoveiser.github.io/hoveiser-genlayer-spinner/")
@@ -81,11 +90,13 @@ def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob)
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "fairpay", "contract.py", 120, 120)
     
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     with pytest.raises(AssertionError) as exc_info:
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     assert "Wrong repository" in str(exc_info.value)
@@ -97,11 +108,13 @@ def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, 
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "", "", "", 120, 120)
     
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"nonexistent-xyz123", 404, "Not Found")
+    direct_vm.mock_web(r"nonexistent-xyz123", _mock_web_response(404, "Not Found"))
     with pytest.raises(AssertionError) as exc_info:
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/nonexistent-xyz123/main/contract.py")
     assert "not fetchable at delivery time" in str(exc_info.value)
@@ -113,20 +126,23 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
     
     # mark_delivered with ARTIFACT_V1
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
+    direct_vm.sender = direct_alice
     _msg(direct_alice, 0)
     c.dispute(1)
     
     # resolve with ARTIFACT_V2 (mutated)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V2)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V2))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -140,6 +156,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(
         bob_addr, 
@@ -149,17 +166,19 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     )
     
     # mark_delivered
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
+    direct_vm.sender = direct_alice
     _msg(direct_alice, 0)
     c.dispute(1)
     
     # resolve with LLM returning REFUNDED
     direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -173,21 +192,24 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
     
     # mark_delivered
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # dispute
+    direct_vm.sender = direct_alice
     _msg(direct_alice, 0)
     c.dispute(1)
     
     # resolve with LLM returning NOT APPROVED (should trigger fetch_failures)
     direct_vm.mock_llm(r".*", '{"verdict": "NOT APPROVED"}')
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
     esc = json.loads(c.get_escrow(1))
@@ -202,15 +224,18 @@ def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
     _msg(direct_alice, VALUE)
     c = _deploy(direct_deploy)
     
+    direct_vm.sender = direct_alice
     _msg(direct_alice, VALUE)
     c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
     
     # mark_delivered
+    direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
-    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
     # approve
+    direct_vm.sender = direct_alice
     _msg(direct_alice, 0)
     c.approve(1)
     
