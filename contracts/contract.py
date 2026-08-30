@@ -57,6 +57,9 @@ def _artifact_view(cleaned: str, raw: str) -> str:
     return head + "\n[structural index of all def/class declarations in the full artifact]\n" + idx
 
 class GenEscrow(gl.Contract):
+    __gl_contract__ = True  # Explicit marker for loader
+    
+    jobs: TreeMap[str, str]
     escrows: TreeMap[str, str]
     next_id: str
     total_locked: str
