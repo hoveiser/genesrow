@@ -50,6 +50,12 @@ class FakeWebResponse:
             self.body = body
 
 
+class FakeGlCallResult:
+    """Mock result object for gl_call_generic that has .get() method"""
+    def get(self):
+        return None
+
+
 def _msg(sender, value=0):
     """Set up gl.message and gl.message_raw"""
     import genlayer.gl as gl
@@ -76,8 +82,10 @@ def _patch_runtime():
     
     gl.wasi = FakeWasi()
     
-    def fake_gl_call_generic(payload):
-        return None
+    def fake_gl_call_generic(payload, callback):
+        """Mock gl_call_generic that takes payload and callback, returns object with .get()"""
+        return FakeGlCallResult()
+    
     gl_call.gl_call_generic = fake_gl_call_generic
     
     # Patch Address class to use FakeAddress
