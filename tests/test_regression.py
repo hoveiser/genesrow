@@ -46,8 +46,9 @@ def _patch_runtime():
 
 
 def _deploy(direct_deploy):
-    """Deploy contract with SDK v0.2.16"""
+    """Deploy contract with SDK v0.2.16 and initialize state"""
     c = direct_deploy("contracts/contract.py", sdk_version="v0.2.16")
+    c.__init__()  # <-- این خط رو اضافه کردم
     _patch_runtime()
     return c
 
