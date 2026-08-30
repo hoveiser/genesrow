@@ -158,4 +158,61 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     c.dispute(1)
     
     # resolve with LLM returning REFUNDED
-    direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "
+    direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    c.resolve(1)
+    
+    esc = json.loads(c.get_escrow(1))
+    assert esc["ai_verdict"] == "REFUNDED"
+    assert esc["status"] == "adjudicated"
+
+
+def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, direct_bob):
+    bob_addr = _addr_hex(direct_bob)
+    
+    _msg(direct_alice, VALUE)
+    c = _deploy(direct_deploy)
+    
+    _msg(direct_alice, VALUE)
+    c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
+    
+    # mark_delivered
+    _msg(direct_bob, 0)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
+    
+    # dispute
+    _msg(direct_alice, 0)
+    c.dispute(1)
+    
+    # resolve with LLM returning NOT APPROVED (should trigger fetch_failures)
+    direct_vm.mock_llm(r".*", '{"verdict": "NOT APPROVED"}')
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    c.resolve(1)
+    
+    esc = json.loads(c.get_escrow(1))
+    assert esc["ai_verdict"] is None
+    assert esc["fetch_failures"] == 1
+    assert esc["status"] == "disputed"
+
+
+def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
+    bob_addr = _addr_hex(direct_bob)
+    
+    _msg(direct_alice, VALUE)
+    c = _deploy(direct_deploy)
+    
+    _msg(direct_alice, VALUE)
+    c.create_escrow(bob_addr, "test job", "must work", "hoveiser", "genesrow", "contract.py", 120, 120)
+    
+    # mark_delivered
+    _msg(direct_bob, 0)
+    direct_vm.mock_web(r"raw\.githubusercontent\.com", 200, ARTIFACT_V1)
+    c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
+    
+    # approve
+    _msg(direct_alice, 0)
+    c.approve(1)
+    
+    esc = json.loads(c.get_escrow(1))
+    assert esc["status"] == "released"
