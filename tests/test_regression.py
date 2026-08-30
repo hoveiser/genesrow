@@ -6,8 +6,8 @@ import json
 import types
 
 VALUE = 2 * 10**18
-ARTIFACT_V1 = "evidence content version 1 - must be at least 20 chars"
-ARTIFACT_V2 = "evidence content version 2 - MUTATED after submission"
+ARTIFACT_V1 = "evidence content version 1 - must be at least 20 chars for seal hash"
+ARTIFACT_V2 = "evidence content version 2 - MUTATED after submission to cheat audit"
 
 
 def _addr_hex(addr_bytes):
@@ -39,6 +39,17 @@ class FakeAddress:
         return self.hex
 
 
+class FakeWebResponse:
+    """Mock web response object with attributes"""
+    def __init__(self, status, body):
+        self.status_code = status
+        self.status = status
+        if isinstance(body, str):
+            self.body = body.encode("utf-8")
+        else:
+            self.body = body
+
+
 def _msg(sender, value=0):
     """Set up gl.message and gl.message_raw"""
     import genlayer.gl as gl
@@ -53,7 +64,7 @@ def _msg(sender, value=0):
 
 
 def _patch_runtime():
-    """Patch gl.wasi, gl_call_generic, Address, eq_principle, and vm for in-memory testing"""
+    """Patch gl.wasi, gl_call_generic, Address, eq_principle, vm, and nondet for in-memory testing"""
     import genlayer.gl as gl
     import genlayer.gl._internal.gl_call as gl_call
     import genlayer
@@ -91,6 +102,36 @@ def _patch_runtime():
         run_nondet_unsafe=fake_run_nondet_unsafe,
         Return=type('Return', (), {})
     )
+    
+    # Mock nondet.web.get and nondet.exec_prompt
+    class FakeNondetWeb:
+        @staticmethod
+        def get(url):
+            """Return mock response based on direct_vm mocks"""
+            import re
+            for pattern, mock_response in _web_mocks.items():
+                if re.search(pattern, url):
+                    return FakeWebResponse(mock_response["status"], mock_response["body"])
+            return FakeWebResponse(404, "Not Found")
+    
+    class FakeNondet:
+        web = FakeNondetWeb()
+        
+        @staticmethod
+        def exec_prompt(prompt):
+            """Return mock LLM response"""
+            import re
+            for pattern, response in _llm_mocks.items():
+                if re.search(pattern, prompt):
+                    return response
+            return '{"verdict": "UNVERIFIABLE", "reasoning": "no mock"}'
+    
+    gl.nondet = FakeNondet()
+
+
+# Global mock registries
+_web_mocks = {}
+_llm_mocks = {}
 
 
 def _deploy(direct_deploy):
@@ -133,6 +174,7 @@ def test_mutable_url_rejected(direct_vm, direct_deploy, direct_alice, direct_bob
 
 
 def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -144,6 +186,7 @@ def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob)
     
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     with pytest.raises(AssertionError) as exc_info:
         c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
@@ -151,6 +194,7 @@ def test_wrong_repo_rejected(direct_vm, direct_deploy, direct_alice, direct_bob)
 
 
 def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -162,6 +206,7 @@ def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, 
     
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"nonexistent-xyz123": _mock_web_response(404, "Not Found")}
     direct_vm.mock_web(r"nonexistent-xyz123", _mock_web_response(404, "Not Found"))
     with pytest.raises(AssertionError) as exc_info:
         # URL must have full SHA to pass authentication check
@@ -170,6 +215,7 @@ def test_fetch_failure_rejected_at_seal(direct_vm, direct_deploy, direct_alice, 
 
 
 def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks, _llm_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -182,6 +228,7 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     # mark_delivered with ARTIFACT_V1
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
@@ -191,6 +238,7 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
     c.dispute(1)
     
     # resolve with ARTIFACT_V2 (mutated)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V2)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V2))
     c.resolve(1)
     
@@ -200,6 +248,7 @@ def test_mutation_detected_mismatch(direct_vm, direct_deploy, direct_alice, dire
 
 
 def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks, _llm_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -217,6 +266,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
@@ -226,7 +276,9 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
     c.dispute(1)
     
     # resolve with LLM returning REFUNDED
+    _llm_mocks = {r".*": '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}'}
     direct_vm.mock_llm(r".*", '{"verdict": "REFUNDED", "reasoning": "Python contract is not a Swift iOS app"}')
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
@@ -236,6 +288,7 @@ def test_injection_neutralized(direct_vm, direct_deploy, direct_alice, direct_bo
 
 
 def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks, _llm_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -248,6 +301,7 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
@@ -257,7 +311,9 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
     c.dispute(1)
     
     # resolve with LLM returning NOT APPROVED (should trigger fetch_failures)
+    _llm_mocks = {r".*": '{"verdict": "NOT APPROVED"}'}
     direct_vm.mock_llm(r".*", '{"verdict": "NOT APPROVED"}')
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.resolve(1)
     
@@ -268,6 +324,7 @@ def test_substring_verdict_not_accepted(direct_vm, direct_deploy, direct_alice, 
 
 
 def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
+    global _web_mocks
     bob_addr = _addr_hex(direct_bob)
     
     _msg(direct_alice, VALUE)
@@ -280,6 +337,7 @@ def test_happy_path_approve(direct_vm, direct_deploy, direct_alice, direct_bob):
     # mark_delivered
     direct_vm.sender = direct_bob
     _msg(direct_bob, 0)
+    _web_mocks = {r"githubusercontent\.com": _mock_web_response(200, ARTIFACT_V1)}
     direct_vm.mock_web(r"githubusercontent\.com", _mock_web_response(200, ARTIFACT_V1))
     c.mark_delivered(1, "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py")
     
