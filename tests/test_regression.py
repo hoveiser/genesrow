@@ -147,15 +147,13 @@ def _hex(b):
 def _create(c, freelancer, desc="job", criteria="page must load", owner="hoveiser", repo="genesrow", path="contract.py"):
     c.create_escrow(str(freelancer), desc, criteria, owner, repo, path, 120, 120)
 
-
-def _deliver(c, url=ARTIFACT_URL):
-    c.mark_delivered(1, url)
-
-
 ARTIFACT_URL = "https://raw.githubusercontent.com/hoveiser/genesrow/c251125461bd739a0219e96dff20d6ab833a56c1/contract.py"
 MUTABLE_URL = "https://hoveiser.github.io/hoveiser-genlayer-spinner/"
 DEAD_URL = "https://raw.githubusercontent.com/hoveiser/nonexistent-xyz123/0000000000000000000000000000000000000000/x.py"
 
+
+def _deliver(c, url=ARTIFACT_URL):
+    c.mark_delivered(1, url)
 
 def test_mutable_url_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
     _reset()
