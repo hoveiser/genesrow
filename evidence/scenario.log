@@ -1,0 +1,38 @@
+contract 0x0CF5095A297763A167B0d2f1CDc921b63c100cE4
+client(deployer) 0x3de43AA2f7162c80af98abe78222aE0Cdf83c506
+freelancer(worker) 0x702a76Db4CBB42a1C7cCAe70AF72e7346B5Fc0e8
+
+[1] A1 ceiling: create with appeal_window = 10 years (expect revert)
+  [A1] create_escrow    ok=False status=FINALIZED exec=ERROR value=1gen  
+      result: AmV4aXRfY29kZSAx
+      total_locked after rejected create = 1gen (expect unchanged 1gen) -> True
+[2] A4 address: create with zero-address freelancer (expect revert)
+  [A4] create_escrow    ok=False status=FINALIZED exec=ERROR value=1gen  
+      result: AmV4aXRfY29kZSAx
+      total_locked = 1gen (expect 1gen) -> True
+[3] create_escrow (bounded windows, unmet criteria 'finalize_payout' => honest REFUNDED expected)
+  [OK] create_escrow    ok=True status=FINALIZED exec=SUCCESS value=1gen  
+[4] A2: freelancer mark_delivered(crafted breakout artifact)
+  [A2] mark_delivered   ok=True status=FINALIZED exec=SUCCESS value=0gen  
+      status=delivered evidence_hash=09f62d91bdb5fa8a5ec3b207c4e3e4030d7023b7e06e4e79f6fd745a63401314
+[5] client request_ai_review then resolve (live AI consensus)
+  [OK] request_ai_review ok=True status=FINALIZED exec=SUCCESS value=0gen  
+  [OK] resolve          ok=True status=FINALIZED exec=SUCCESS value=0gen  
+      verdict=REFUNDED winner=client status=adjudicated
+      reasoning: Validators independently re-ran the audit and agreed on verdict REFUNDED. AI explanation: The deliverable fails to define the required top-level function named finalize_payout.
+[6] finalize by losing party; recipient 0x3de43AA2f7162c80af98abe78222aE0Cdf83c506
+  [OK] finalize         ok=True status=FINALIZED exec=SUCCESS value=0gen  
+      recipient balance 77gen -> 78gen (delta 1gen)
+      escrow status=refunded total_locked=1gen
+
+checks: {
+  "a1_ceiling_reverted": true,
+  "a4_zero_reverted": true,
+  "funded": true,
+  "delivered_sealed": true,
+  "legitimate_verdict": true,
+  "real_balance_change": true,
+  "locked_released": true
+}
+
+7/7 on-chain checks passed

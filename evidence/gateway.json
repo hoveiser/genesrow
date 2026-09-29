@@ -1,0 +1,36 @@
+{
+  "onchain_raw_reachable_via_scenario": "REFUNDED",
+  "sha": "47dca83494a99b8e391efaed10dff4d5fdc9c642",
+  "hosts": {
+    "raw.githubusercontent.com": {
+      "url": "https://raw.githubusercontent.com/hoveiser/genesrow/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py",
+      "egress": "dns 185.199.111.133 + tcp443 ok",
+      "determinism": "byte-stable (sha256 09f62d91bdb5fa8a..., 1265B twice) -> safe to seal"
+    },
+    "github.com (blob HTML)": {
+      "url": "https://github.com/hoveiser/genesrow/blob/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py",
+      "egress": "dns 140.82.121.4 + tcp443 ok",
+      "determinism": "NOT byte-stable (95a75f0be155... vs b574d1bf1628...) -> unsuitable content target"
+    },
+    "ipfs.io": {
+      "url": "https://ipfs.io/ipfs/bafkreihdwdcefgh4dqkjv67uzcmw7oie6m36rqjz5v3q5v7v7h3n3q6tge",
+      "egress": "dns 209.94.90.1 + tcp443 ok",
+      "determinism": "fetch failed from local egress (HTTPError)"
+    },
+    "gateway.ipfs.io": {
+      "url": "https://gateway.ipfs.io/ipfs/bafkreihdwdcefgh4dqkjv67uzcmw7oie6m36rqjz5v3q5v7v7h3n3q6tge",
+      "egress": "dns 209.94.90.1 + tcp443 ok",
+      "determinism": "fetch failed from local egress (HTTPError)"
+    },
+    "dweb.link": {
+      "url": "https://dweb.link/ipfs/bafkreihdwdcefgh4dqkjv67uzcmw7oie6m36rqjz5v3q5v7v7h3n3q6tge",
+      "egress": "dns 209.94.90.3 + tcp443 ok",
+      "determinism": "fetch failed from local egress (HTTPError)"
+    },
+    "arweave.net": {
+      "url": "https://arweave.net/xHh6XAODR0gHwAC7Y0ME9qQKWO_Fr1G8ek61IXxpe",
+      "egress": "dns 195.181.175.41 + tcp443 ok",
+      "determinism": "fetch failed from local egress (HTTPError)"
+    }
+  }
+}

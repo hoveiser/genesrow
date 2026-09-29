@@ -60,6 +60,17 @@ def main() -> int:
            "client": deployer.address, "freelancer": worker.address, "txs": [], "checks": {}}
     print(f"contract {contract}\nclient(deployer) {deployer.address}\nfreelancer(worker) {worker.address}\n")
 
+    # snapshot the aggregate lock so the checks are delta-based and this script is re-runnable
+    # against a contract that already holds prior escrows (reverted creates never change it)
+    locked0 = int(esc.read("get_total_locked", []))
+    rec["locked_before"] = locked0
+
+    def free_id() -> int:
+        i = 1
+        while json.loads(esc.read("get_escrow", [i])) not in ({}, None):
+            i += 1
+        return i
+
     # ---- A1 ceiling: a decade-long appeal window must revert, reserving nothing ----
     print("[1] A1 ceiling: create with appeal_window = 10 years (expect revert)")
     r = esc.write("a1_ceiling", "create_escrow",
@@ -67,9 +78,9 @@ def main() -> int:
                    "hoveiser", "genesrow", DELIVER_PATH, 3600, TEN_YEARS], value=VALUE)
     step(rec, "A1", r)
     locked = int(esc.read("get_total_locked", []))
-    rec["checks"]["a1_ceiling_reverted"] = (r["ok"] is False and locked == 0)
+    rec["checks"]["a1_ceiling_reverted"] = (r["ok"] is False and locked == locked0)
     print(f"      total_locked after rejected create = {locked // GEN}gen "
-          f"(expect 0) -> {rec['checks']['a1_ceiling_reverted']}")
+          f"(expect unchanged {locked0 // GEN}gen) -> {rec['checks']['a1_ceiling_reverted']}")
 
     # ---- A4 address: zero-address freelancer must revert, reserving nothing ----
     print("[2] A4 address: create with zero-address freelancer (expect revert)")
@@ -79,18 +90,19 @@ def main() -> int:
                    "hoveiser", "genesrow", DELIVER_PATH, 3600, 3600], value=VALUE)
     step(rec, "A4", r)
     locked = int(esc.read("get_total_locked", []))
-    rec["checks"]["a4_zero_reverted"] = (r["ok"] is False and locked == 0)
-    print(f"      total_locked = {locked // GEN}gen (expect 0) -> {rec['checks']['a4_zero_reverted']}")
+    rec["checks"]["a4_zero_reverted"] = (r["ok"] is False and locked == locked0)
+    print(f"      total_locked = {locked // GEN}gen (expect {locked0 // GEN}gen) -> {rec['checks']['a4_zero_reverted']}")
 
-    # ---- valid create with bounded windows (fresh contract, so this escrow is id 1) ----
+    # ---- valid create with bounded windows (dynamic next free id, so re-runnable) ----
     print("[3] create_escrow (bounded windows, unmet criteria 'finalize_payout' => honest REFUNDED expected)")
-    eid = 1
+    eid = free_id()
+    rec["escrow_id"] = eid
     r = esc.write("create", "create_escrow",
                   [worker.address, "timesheet module",
                    "The deliverable must define a top-level function named finalize_payout",
                    "hoveiser", "genesrow", DELIVER_PATH, 3600, 3600], value=VALUE)
     step(rec, "OK", r)
-    rec["checks"]["funded"] = int(esc.read("get_total_locked", [])) == VALUE
+    rec["checks"]["funded"] = int(esc.read("get_total_locked", [])) == locked0 + VALUE
 
     # ---- A2: freelancer delivers the crafted-breakout artifact ----
     print("[4] A2: freelancer mark_delivered(crafted breakout artifact)")
@@ -125,7 +137,7 @@ def main() -> int:
     rec["balance"] = {"recipient": recipient, "before": before, "after": after,
                       "delta": delta, "expected": VALUE}
     rec["checks"]["real_balance_change"] = (delta == VALUE and e2["status"] in ("released", "refunded"))
-    rec["checks"]["locked_zero"] = int(esc.read("get_total_locked", [])) == 0
+    rec["checks"]["locked_released"] = int(esc.read("get_total_locked", [])) == locked0
     print(f"      recipient balance {before//GEN}gen -> {after//GEN}gen (delta {delta//GEN}gen)")
     print(f"      escrow status={e2['status']} total_locked={int(esc.read('get_total_locked', []))//GEN}gen")
 

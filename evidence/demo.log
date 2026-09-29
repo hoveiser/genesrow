@@ -1,0 +1,26 @@
+======================================================================
+GenEscrow live two-account demo (StudioNet, chain id 61999)
+contract   : 0x0CF5095A297763A167B0d2f1CDc921b63c100cE4
+client     : 0x3de43AA2f7162c80af98abe78222aE0Cdf83c506
+freelancer : 0xcEEe38963873f0582E12Aa9a1271BB8974552e36 (fresh, unfunded)
+======================================================================
+
+[1/5] client funds escrow #3 with 1 GEN
+      tx 0xe2b9d08e7e75dec4479fee614350f0ae8f7c5fc35c2ef1cfc01f62626b659626  ok=True  total_locked=2gen
+
+[2/5] freelancer delivers pinned artifact and the contract seals the bytes
+      url https://raw.githubusercontent.com/hoveiser/genesrow/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py
+      tx 0x56dab16bf033d8366b5257e6d4b6cc72bb62fa805cf1c0901ec25cdd4ee5be22  status=delivered  evidence_hash=09f62d91bdb5fa8a5ec3b207c4e3e4030d7023b7e06e4e79f6fd745a63401314
+
+[3/5] client requests an AI review (real validators re-fetch and re-seal)
+      tx 0xca58029d050fabe48469576a191a70f416c80aec92c83bf34ab00967e499b7ec  ok=True
+
+[4/5] resolve: AI arbitration reaches a verdict
+      tx 0x9cb6152c6b478d8decadbfcd13b533977d64d8159eafabe317c3f60a6f0fbf42  verdict=APPROVED  winner=freelancer
+      reasoning: Validators independently re-ran the audit and agreed on verdict APPROVED. AI explanation: The deliverable defines a function named submit_timesheet, meeting the
+
+[5/5] losing party finalizes; winner is paid on chain
+      tx 0x4fa7c3e41054bec72443cd35a5d757a5c639a59a8e2d529eb3355aa61e94439d  recipient 0xcEEe38963873f0582E12Aa9a1271BB8974552e36
+      recipient GEN balance: 0 -> 1 (delta 1 gen)
+
+Demo record written to evidence/demo.json

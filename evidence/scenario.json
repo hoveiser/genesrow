@@ -1,0 +1,96 @@
+{
+  "contract": "0x0CF5095A297763A167B0d2f1CDc921b63c100cE4",
+  "deliver_sha": "47dca83494a99b8e391efaed10dff4d5fdc9c642",
+  "deliver_url": "https://raw.githubusercontent.com/hoveiser/genesrow/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py",
+  "client": "0x3de43AA2f7162c80af98abe78222aE0Cdf83c506",
+  "freelancer": "0x702a76Db4CBB42a1C7cCAe70AF72e7346B5Fc0e8",
+  "txs": [
+    {
+      "name": "a1_ceiling",
+      "fn": "create_escrow",
+      "txid": "0xfa52044d8c11dd07c6bd1ccd32a7cd44892e1b9f131c9ef337c979f0f038fe86",
+      "status": "FINALIZED",
+      "execution_result": "ERROR",
+      "ok": false,
+      "value": 1000000000000000000
+    },
+    {
+      "name": "a4_zero",
+      "fn": "create_escrow",
+      "txid": "0x963c123b977d761e4d2f383d2bf4bd939e92d3e811bda84335030a8fd988b0e7",
+      "status": "FINALIZED",
+      "execution_result": "ERROR",
+      "ok": false,
+      "value": 1000000000000000000
+    },
+    {
+      "name": "create",
+      "fn": "create_escrow",
+      "txid": "0x407d594f80c5c2c0fe6a4ef38a0d0871e27f6584c5aee423c999e5a89767d4c2",
+      "status": "FINALIZED",
+      "execution_result": "SUCCESS",
+      "ok": true,
+      "value": 1000000000000000000
+    },
+    {
+      "name": "mark_delivered",
+      "fn": "mark_delivered",
+      "txid": "0x37bed56dc1346e24167629b2a62247be11f05d1729d293bc881546594a590daf",
+      "status": "FINALIZED",
+      "execution_result": "SUCCESS",
+      "ok": true,
+      "value": 0
+    },
+    {
+      "name": "request_ai_review",
+      "fn": "request_ai_review",
+      "txid": "0x6aae12cb532b006fab3d6c710d498f9cd14a76d1a2b466047b5cba8d10c239f3",
+      "status": "FINALIZED",
+      "execution_result": "SUCCESS",
+      "ok": true,
+      "value": 0
+    },
+    {
+      "name": "resolve",
+      "fn": "resolve",
+      "txid": "0x10b566795ea5e3a537719b3a15346c17db8895a4e92e8c510396d4aec3f2a9c0",
+      "status": "FINALIZED",
+      "execution_result": "SUCCESS",
+      "ok": true,
+      "value": 0
+    },
+    {
+      "name": "finalize",
+      "fn": "finalize",
+      "txid": "0x935cd04faa88aec33fb04dae8ba05bf466c0f2b77aad30641ebd4673ad89b6f7",
+      "status": "FINALIZED",
+      "execution_result": "SUCCESS",
+      "ok": true,
+      "value": 0
+    }
+  ],
+  "checks": {
+    "a1_ceiling_reverted": true,
+    "a4_zero_reverted": true,
+    "funded": true,
+    "delivered_sealed": true,
+    "legitimate_verdict": true,
+    "real_balance_change": true,
+    "locked_released": true
+  },
+  "locked_before": 1000000000000000000,
+  "escrow_id": 2,
+  "verdict": {
+    "status": "adjudicated",
+    "ai_verdict": "REFUNDED",
+    "winner": "client",
+    "ai_reasoning": "Validators independently re-ran the audit and agreed on verdict REFUNDED. AI explanation: The deliverable fails to define the required top-level function named finalize_payout."
+  },
+  "balance": {
+    "recipient": "0x3de43AA2f7162c80af98abe78222aE0Cdf83c506",
+    "before": 77000000000000000000,
+    "after": 78000000000000000000,
+    "delta": 1000000000000000000,
+    "expected": 1000000000000000000
+  }
+}

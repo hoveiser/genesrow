@@ -1,0 +1,10 @@
+{
+  "network": "studionet (chain id 61999)",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "deployer": "0x3de43AA2f7162c80af98abe78222aE0Cdf83c506",
+  "deploy_txid": "0x314a647a26fe002c3301ac29de52602a8af106d029801369a047417e7c7225f1",
+  "contract_address": "0x0CF5095A297763A167B0d2f1CDc921b63c100cE4",
+  "source_byte_match": true,
+  "repo_bytes": 22485,
+  "stored_bytes": 22485
+}

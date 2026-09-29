@@ -1,0 +1,42 @@
+{
+  "contract": "0x0CF5095A297763A167B0d2f1CDc921b63c100cE4",
+  "sha": "47dca83494a99b8e391efaed10dff4d5fdc9c642",
+  "client": "0x3de43AA2f7162c80af98abe78222aE0Cdf83c506",
+  "freelancer": "0xcEEe38963873f0582E12Aa9a1271BB8974552e36",
+  "escrow_id": 3,
+  "recipient": "0xcEEe38963873f0582E12Aa9a1271BB8974552e36",
+  "balance_before": 0,
+  "balance_after": 1000000000000000000,
+  "txs": [
+    {
+      "name": "create",
+      "txid": "0xe2b9d08e7e75dec4479fee614350f0ae8f7c5fc35c2ef1cfc01f62626b659626",
+      "status": "FINALIZED",
+      "ok": true
+    },
+    {
+      "name": "mark_delivered",
+      "txid": "0x56dab16bf033d8366b5257e6d4b6cc72bb62fa805cf1c0901ec25cdd4ee5be22",
+      "status": "FINALIZED",
+      "ok": true
+    },
+    {
+      "name": "request_ai_review",
+      "txid": "0xca58029d050fabe48469576a191a70f416c80aec92c83bf34ab00967e499b7ec",
+      "status": "FINALIZED",
+      "ok": true
+    },
+    {
+      "name": "resolve",
+      "txid": "0x9cb6152c6b478d8decadbfcd13b533977d64d8159eafabe317c3f60a6f0fbf42",
+      "status": "FINALIZED",
+      "ok": true
+    },
+    {
+      "name": "finalize",
+      "txid": "0x4fa7c3e41054bec72443cd35a5d757a5c639a59a8e2d529eb3355aa61e94439d",
+      "status": "FINALIZED",
+      "ok": true
+    }
+  ]
+}
