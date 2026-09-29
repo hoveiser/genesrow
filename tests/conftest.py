@@ -27,6 +27,11 @@ T0 = 1_800_000_000
 # scratch copy (outside the repo) via GENECONTRACT to prove the new tests actually fail
 # when a fix is reverted, without ever touching the tracked tree.
 CONTRACT_PATH = os.environ.get("GENECONTRACT", "contract.py")
+# Pin the GenVM SDK bundle the direct runner downloads. The contract's runner hash is present
+# in this bundle, and its release asset still serves genvm-universal.tar.xz. The current
+# latest release (v0.3.0-rc7) no longer serves that asset, so an unpinned fresh CI cache
+# 404s on download; pinning keeps Direct Mode reproducible. Override with GENVN_SDK_VERSION.
+SDK_VERSION = os.environ.get("GENVN_SDK_VERSION", "v0.2.16")
 VALUE = 2 * 10**18
 ART = ("class GenEscrow: escrow contract with def mark_delivered and def resolve and "
        "def finalize using sha256 sealed evidence " + "pad " * 40)
@@ -86,7 +91,7 @@ class Env:
 @pytest.fixture
 def env(direct_vm, direct_deploy):
     direct_vm.warp(iso(0))
-    c = direct_deploy(CONTRACT_PATH)
+    c = direct_deploy(CONTRACT_PATH, sdk_version=SDK_VERSION)
     import genlayer.gl as gl
     gl.message_raw["datetime"] = iso(0)
     mod = sys.modules[type(c).__module__]
