@@ -13,7 +13,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: pip install pytest genlayer-test
+        # Pinned to match the SDK the harness was developed and verified against.
+        # The Direct Mode real-runtime harness relies on this version's fixtures
+        # (direct_deploy / direct_vm) and internals, so an unpinned install could
+        # silently change behavior and break fidelity.
+        run: pip install pytest "genlayer-test==0.29.2"
 
       - name: Run regression harness
         run: pytest tests/ -v
