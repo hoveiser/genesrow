@@ -1,0 +1,30 @@
+contract 0x0CF5095A297763A167B0d2f1CDc921b63c100cE4
+client(deployer) 0x3de43AA2f7162c80af98abe78222aE0Cdf83c506
+
+[CONTROL-raw.github] deliver via mark_delivered  url=https://raw.githubusercontent.com/hoveiser/genesrow/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py
+      deliver tx=0xe67bc905caae2422cf3b0a914573009b90f67e24f3acaeb279d341dae2ee0942 ok=True exec=SUCCESS
+      escrow status=delivered seal=09f62d91bdb5fa8a5ec3b207c4e3e4030d7023b7e06e4e79f6fd745a63401314
+      => REACHABLE: validators agreed on seal 09f62d91bdb5fa8a...
+
+[ipfs.io] deliver via mark_delivered  url=https://ipfs.io/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme
+      deliver tx=0x634a922f2a73f675e477a23804b8a045dfd10102b71f6588ad57d915045a28d7 ok=False exec=ERROR
+      escrow status=funded seal=None
+      => NOT_REACHABLE: delivery did not finalize clean: exec=ERROR AmV4aXRfY29kZSAx
+
+[gateway.ipfs.io] deliver via mark_delivered  url=https://gateway.ipfs.io/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme
+      deliver tx=0x4e60e39db180eda70adb4c5078b76cc0b95c7fe3353b120b002e3b8bf72bca9b ok=False exec=ERROR
+      escrow status=funded seal=None
+      => NOT_REACHABLE: delivery did not finalize clean: exec=ERROR AmV4aXRfY29kZSAx
+
+[dweb.link] deliver via mark_delivered  url=https://dweb.link/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme
+      deliver tx=0x15a0467f81b04cc29762976de9fb82773e18fdddb7623b8219d5f8ce3d47c478 ok=False exec=ERROR
+      escrow status=funded seal=None
+      => NOT_REACHABLE: delivery did not finalize clean: exec=ERROR AmV4aXRfY29kZSAx
+
+=== summary ===
+  REACHABLE      CONTROL-raw.github (control)
+  NOT_REACHABLE  ipfs.io
+  NOT_REACHABLE  gateway.ipfs.io
+  NOT_REACHABLE  dweb.link
+
+No allowlisted IPFS gateway finalized a delivery from the validator network.

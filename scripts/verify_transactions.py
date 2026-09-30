@@ -32,6 +32,10 @@ def collect_txids():
     if dpath.exists():
         for t in json.load(open(dpath)).get("txs", []):
             txids.append(("demo_" + t["name"], t["txid"], None))
+    gpath = EVIDENCE / "ipfs_gateways.json"
+    if gpath.exists():
+        for t in json.load(open(gpath)).get("results", []):
+            txids.append(("gateway_" + t["label"], t["deliver_txid"], None))
     return txids
 
 

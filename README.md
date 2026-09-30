@@ -27,7 +27,7 @@ Each item below was verified against the real pinned SDK before being fixed, and
 2. **Structural index sanitization (A2).** The delivery structural index was built from raw source lines with no per-line tag stripping or length cap, so a crafted line could break out of the untrusted-data wrapper and inject instructions into the arbitration prompt. Every index line is now sanitized the same way party text already was (markup neutralized, per-line and total caps). Test asserts neutralization in the actual prompt sent to the model: `test_structural_index_breakout_neutralized_in_prompt`.
 3. **Seal covers raw bytes (A3).** The sealed hash was computed over cleaned, visible text, so bytes hidden inside constructs stripped before hashing (for example style or script blocks) were not bound to the seal even though they could still reach the prompt through the structural index. The seal now covers the raw fetched bytes, so any mutation anywhere in the artifact is caught. Test: `test_hidden_only_mutation_now_caught` (a hidden-only mutation now resolves to `EVIDENCE_MISMATCH`, where it previously did not).
 4. **Freelancer address validation (A4).** `create_escrow` stored the freelancer field as a raw string with no format check, no zero-address check, and no check that it differs from the client. It is now parsed and validated (reject malformed, reject zero, reject equal to the client) before any escrow is created. Tests: `test_party_address_validation_*` and `test_create_rejects_bad_freelancer` (each asserts no escrow was created).
-5. **Evidence gateway allowlist + path normalization (A5).** The single hardcoded gateway prefix was replaced with a small allowlist of gateway hosts validated by an anchored parser resistant to lookalike hosts, userinfo tricks, wrong scheme, wrong port, query strings, fragments, dot-segment path traversal, and case/unicode tricks. The sealed content hash remains the actual integrity guarantee, so gateway choice does not affect trust. Tests: `test_authenticated_accepts_allowlisted`, `test_authenticated_rejects_attacks`.
+5. **Evidence gateway allowlist + path normalization (A5).** The single hardcoded gateway prefix was replaced with a small allowlist of gateway hosts validated by an anchored parser resistant to lookalike hosts, userinfo tricks, wrong scheme, wrong port, query strings, fragments, dot-segment path traversal, and case/unicode tricks. The sealed content hash remains the actual integrity guarantee, so gateway choice does not affect trust. Reachability was then checked on chain from the validator network, not just local egress: only commit-pinned `raw.githubusercontent.com` is proven validator-reachable, and the three IPFS entries are shown to be unreachable from validators today (see Gateway reachability below). Tests: `test_authenticated_accepts_allowlisted`, `test_authenticated_rejects_attacks`.
 6. **Real-runtime test harness (A6).** The Direct Mode suite previously ran against a stubbed `genlayer` module injected into `sys.modules`, so it never exercised real address handling, real storage, real payable enforcement, or real balance movement. The harness (`tests/conftest.py`) now deploys and runs against the actual pinned runner, capturing real EthSend calls and the real prompt text sent to the model. All A1 through A5 tests run against this real runtime.
 7. **Repo hygiene and network label (A8).** The two non-identical contract copies are collapsed to a single canonical `contract.py` (the one that is deployed and tested); the stale `contracts/contract.py` (which carried a dead `jobs` field never present in the deployed source) is removed. The network label is corrected from "Testnet Bradbury" to StudioNet (chain id 61999) everywhere; the explorer links always pointed at `explorer-studio.genlayer.com`, which is StudioNet.
 
@@ -51,7 +51,18 @@ All hashes below are copied from raw explorer JSON records under `evidence/verif
 
 The resolve reasoning stored on chain: "Validators independently re-ran the audit and agreed on verdict REFUNDED. The deliverable fails to define the required top-level function named finalize_payout." This is the A2 proof on real validators: the crafted structural-index breakout line was neutralized and arbitration still reached a legitimate verdict.
 
-**Gateway reachability (A5).** The scenario delivered via `raw.githubusercontent.com`, and independent validators re-fetched that URL and reached consensus on the sealed bytes, so that gateway is confirmed validator-reachable on chain. `scripts/probe_gateway.py` additionally shows `raw.githubusercontent.com` returns byte-identical content across fetches (safe to seal) while the `github.com/blob` HTML wrapper is not byte-stable; other allowlisted hosts (ipfs.io, gateway.ipfs.io, dweb.link, arweave.net) were checked from this build environment's own egress only and are reported as not separately proven on chain rather than guessed.
+**Gateway reachability (A5).** Delivery seals the evidence through `strict_eq`, so a `mark_delivered` that FINALIZES with a real `evidence_hash` means every validator independently fetched the URL and agreed on the raw-byte hash. The scenario delivered via `raw.githubusercontent.com` and reached that consensus, so it is confirmed validator-reachable on chain.
+
+The three IPFS entries in the allowlist (ipfs.io, gateway.ipfs.io, dweb.link) were then probed the same way on chain with `scripts/probe_ipfs_gateways.py` (one content-addressed object requested through each gateway, plus a `raw.githubusercontent.com` control under identical conditions). Raw explorer JSON is in `evidence/txs/` and `evidence/verified/`, summarized in `evidence/ipfs_gateways.json`:
+
+| Gateway | Deliver TX | On-chain result | Validator-reachable? |
+|---|---|---|---|
+| raw.githubusercontent.com (control) | [`0xe67bc905caae2422cf3b0a914573009b90f67e24f3acaeb279d341dae2ee0942`](https://explorer-studio.genlayer.com/tx/0xe67bc905caae2422cf3b0a914573009b90f67e24f3acaeb279d341dae2ee0942) | SUCCESS, sealed `09f62d91...` | Yes |
+| ipfs.io | [`0x634a922f2a73f675e477a23804b8a045dfd10102b71f6588ad57d915045a28d7`](https://explorer-studio.genlayer.com/tx/0x634a922f2a73f675e477a23804b8a045dfd10102b71f6588ad57d915045a28d7) | reverted, `nondet_disagree=null` | No |
+| gateway.ipfs.io | [`0x4e60e39db180eda70adb4c5078b76cc0b95c7fe3353b120b002e3b8bf72bca9b`](https://explorer-studio.genlayer.com/tx/0x4e60e39db180eda70adb4c5078b76cc0b95c7fe3353b120b002e3b8bf72bca9b) | reverted, `nondet_disagree=null` | No |
+| dweb.link | [`0x15a0467f81b04cc29762976de9fb82773e18fdddb7623b8219d5f8ce3d47c478`](https://explorer-studio.genlayer.com/tx/0x15a0467f81b04cc29762976de9fb82773e18fdddb7623b8219d5f8ce3d47c478) | reverted, `nondet_disagree=null` | No |
+
+**Plainly stated: as of this proof none of the three allowlisted IPFS gateways are fetchable from the StudioNet validator network.** Each delivery reverted with the identical on-chain error `AssertionError: Deliverable URL not fetchable at delivery time`, and `nondet_disagree=null` shows this was a unanimous validator agreement, not an ambiguous no-consensus. From this build environment the same hosts return Cloudflare `429`/`403` (a JS "Just a moment..." challenge for browser UAs, a rate-limit for programmatic UAs), and `gateway.ipfs.io` is only a `301` into `ipfs.io`; the GenLayer web driver is a programmatic fetcher and cannot pass that wall. These hosts are allowlisted only for structural completeness of the URL parser. A real escrow must point its deliverable at a gateway validators can actually reach, which on StudioNet today means `raw.githubusercontent.com` (commit-pinned). This is the same class of gap that made FairPay's original ipfs.io-only design fail on chain, which is why it was verified on chain rather than inferred from local egress. `github.com/blob` and `arweave.net` were not proven validator-reachable here: `github.com/blob` returns a non-byte-stable HTML wrapper (it would break the seal), and `arweave.net` was only seen reachable from local egress, so neither should be treated as confirmed.
 
 ## Try it yourself
 
@@ -92,7 +103,7 @@ The demo creates an escrow between two distinct accounts, delivers a pinned arti
 ## Technical Implementation
 
 ### Authenticated artifacts
-- Allowlist: GitHub raw/blob/commit at full SHA, IPFS, Arweave, validated by an anchored parser.
+- Allowlist: GitHub raw/blob/commit at full SHA, IPFS, Arweave, validated by an anchored parser. Only commit-pinned `raw.githubusercontent.com` is proven reachable from the validator network today; IPFS entries revert on chain (see Gateway reachability).
 - Authenticity binding: expected owner/repo/path enforced at delivery.
 - Seal: sha256 of the raw fetched bytes at delivery, re-verified at adjudication.
 - HTTP errors rejected at delivery.
@@ -135,15 +146,15 @@ The demo creates an escrow between two distinct accounts, delivers a pinned arti
 ### Residual (inherent)
 1. **LLM verdict variance** - the one-shot appeal mechanism addresses this.
 2. **Vague acceptance criteria** - the freelancer must review before starting.
-3. **Gateway availability** - retry mitigates; the sealed hash, not the gateway, is the trust anchor.
+3. **Gateway availability** - a gateway can pass local egress yet be unreachable from validators (FairPay's ipfs.io lesson). The allowlist is a liveness aid, not a trust anchor: the sealed hash is the guarantee, and a deliverable must point at a gateway validators can reach (commit-pinned GitHub raw today).
 4. **Consensus divergence** - GenLayer protocol behavior, leader rotation.
 
 ## Files
 - `contract.py` - the single canonical GenEscrow source (v1.3.0), deployed and tested.
 - `tests/` - Direct Mode suite on the real pinned runner.
 - `demo/` - `demo_two_account.py` (reviewer-runnable lifecycle) and `deliverable.py` (the pinned artifact used as evidence).
-- `scripts/` - StudioNet deploy, live scenario, gateway probe, transaction verification, and video build.
-- `evidence/` - raw explorer JSON for the deploy, scenario, demo, and verification summary.
+- `scripts/` - StudioNet deploy, live scenario, gateway probes (local determinism + on-chain IPFS validator reachability), transaction verification, and video build.
+- `evidence/` - raw explorer JSON for the deploy, scenario, demo, gateway reachability probe, and verification summary.
 - `README.md` - this documentation.
 
 ## Related

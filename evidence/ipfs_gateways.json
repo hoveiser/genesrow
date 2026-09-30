@@ -1,0 +1,79 @@
+{
+  "contract": "0x0CF5095A297763A167B0d2f1CDc921b63c100cE4",
+  "ipfs_object": "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme",
+  "method": "mark_delivered seals via strict_eq; FINALIZED delivery with a real evidence_hash means all validators fetched and agreed on the raw-byte hash",
+  "results": [
+    {
+      "label": "CONTROL-raw.github",
+      "control": true,
+      "url": "https://raw.githubusercontent.com/hoveiser/genesrow/47dca83494a99b8e391efaed10dff4d5fdc9c642/demo/deliverable.py",
+      "escrow_id": 4,
+      "deliver_txid": "0xe67bc905caae2422cf3b0a914573009b90f67e24f3acaeb279d341dae2ee0942",
+      "deliver_status": "FINALIZED",
+      "deliver_ok": true,
+      "execution_result": "SUCCESS",
+      "escrow_status_after": "delivered",
+      "evidence_hash": "09f62d91bdb5fa8a5ec3b207c4e3e4030d7023b7e06e4e79f6fd745a63401314",
+      "verdict": "REACHABLE",
+      "reason": "validators agreed on seal 09f62d91bdb5fa8a...",
+      "nondet_disagree": null,
+      "revert_detail": ""
+    },
+    {
+      "label": "ipfs.io",
+      "control": false,
+      "url": "https://ipfs.io/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme",
+      "escrow_id": 5,
+      "deliver_txid": "0x634a922f2a73f675e477a23804b8a045dfd10102b71f6588ad57d915045a28d7",
+      "deliver_status": "FINALIZED",
+      "deliver_ok": false,
+      "execution_result": "ERROR",
+      "escrow_status_after": "funded",
+      "evidence_hash": null,
+      "verdict": "NOT_REACHABLE",
+      "reason": "consensus-unanimous revert: Deliverable URL not fetchable at delivery time (nondet_disagree=null; every validator failed to fetch and agreed)",
+      "nondet_disagree": null,
+      "revert_detail": "AssertionError: Deliverable URL not fetchable at delivery time"
+    },
+    {
+      "label": "gateway.ipfs.io",
+      "control": false,
+      "url": "https://gateway.ipfs.io/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme",
+      "escrow_id": 6,
+      "deliver_txid": "0x4e60e39db180eda70adb4c5078b76cc0b95c7fe3353b120b002e3b8bf72bca9b",
+      "deliver_status": "FINALIZED",
+      "deliver_ok": false,
+      "execution_result": "ERROR",
+      "escrow_status_after": "funded",
+      "evidence_hash": null,
+      "verdict": "NOT_REACHABLE",
+      "reason": "consensus-unanimous revert: Deliverable URL not fetchable at delivery time (nondet_disagree=null; every validator failed to fetch and agreed)",
+      "nondet_disagree": null,
+      "revert_detail": "AssertionError: Deliverable URL not fetchable at delivery time"
+    },
+    {
+      "label": "dweb.link",
+      "control": false,
+      "url": "https://dweb.link/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme",
+      "escrow_id": 7,
+      "deliver_txid": "0x15a0467f81b04cc29762976de9fb82773e18fdddb7623b8219d5f8ce3d47c478",
+      "deliver_status": "FINALIZED",
+      "deliver_ok": false,
+      "execution_result": "ERROR",
+      "escrow_status_after": "funded",
+      "evidence_hash": null,
+      "verdict": "NOT_REACHABLE",
+      "reason": "consensus-unanimous revert: Deliverable URL not fetchable at delivery time (nondet_disagree=null; every validator failed to fetch and agreed)",
+      "nondet_disagree": null,
+      "revert_detail": "AssertionError: Deliverable URL not fetchable at delivery time"
+    }
+  ],
+  "reachable": [
+    "CONTROL-raw.github"
+  ],
+  "not_reachable": [
+    "ipfs.io",
+    "gateway.ipfs.io",
+    "dweb.link"
+  ]
+}
