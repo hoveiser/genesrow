@@ -11,13 +11,14 @@ A decentralized escrow contract on GenLayer where deliverables must be authentic
 - **Contract Address:** `0x0CF5095A297763A167B0d2f1CDc921b63c100cE4`
 - **Deploy TX:** [`0x314a647a26fe002c3301ac29de52602a8af106d029801369a047417e7c7225f1`](https://explorer-studio.genlayer.com/tx/0x314a647a26fe002c3301ac29de52602a8af106d029801369a047417e7c7225f1)
 - **Explorer:** [View contract on StudioNet](https://explorer-studio.genlayer.com/address/0x0CF5095A297763A167B0d2f1CDc921b63c100cE4)
-- **Stored source byte-match:** the on-chain source returned by `gen_getContractCode` is byte-identical to `contract.py` (22485 bytes both sides; see `evidence/deploy.json` and `evidence/stored_source.bin`).
+- **Stored source byte-match:** the on-chain source returned by `gen_getContractCode` is byte-identical to `contract.py` (22485 bytes both sides). Re-verify any time with `python scripts/verify_deployment.py` (read-only, writes `evidence/verify_deployment.json`); also see `evidence/deploy.json` and `evidence/stored_source.bin`.
 
-## Demo video (captions only)
+## Demo videos (captions only)
 
-[genesrow_demo.mp4](https://github.com/hoveiser/genesrow/releases/download/v1.3.0/genesrow_demo.mp4) (68s, hosted as a GitHub release asset on the `v1.3.0` tag).
+- Lifecycle demo: [genesrow_demo.mp4](https://github.com/hoveiser/genesrow/releases/download/v1.3.0/genesrow_demo.mp4) (68s) - the two-account escrow end to end, from the actual stdout of `demo/demo_two_account.py` run live against StudioNet.
+- Security hardening: [genesrow_security.mp4](https://github.com/hoveiser/genesrow/releases/download/v1.3.0/genesrow_security.mp4) (52s) - one segment per audit closure A1 through A5 plus the byte-match check, each showing the real on-chain result copied from `evidence/scenario.json`, `evidence/ipfs_gateways.json`, and `evidence/verify_deployment.json` (built by `scripts/build_security_video.py`).
 
-Plain note on what this is and is not: there is no offline text-to-speech in the build environment, so the video is captions-only with no voiceover. It is also not a live browser screen capture (GenEscrow has no frontend); it renders the actual stdout of `demo/demo_two_account.py` running live against StudioNet, with timed burned-in captions describing each step. Nothing in it is retyped or fabricated. A GitHub release download link is not itself embeddable on platforms that require a native YouTube or X video, so if you want it embedded there you will need to re-upload the file yourself.
+Both are hosted as GitHub release assets on the `v1.3.0` tag. Plain note on what these are and are not: there is no offline text-to-speech in the build environment, so the videos are captions-only with no voiceover. They are also not live browser screen captures (GenEscrow has no frontend); they render real transcript and evidence values, and nothing is retyped or fabricated. A GitHub release download link is not itself embeddable on platforms that require a native YouTube or X video, so if you want them embedded there you will need to re-upload the files yourself.
 
 ## Changes from v1.2.0 to v1.3.0 (Milestone)
 
@@ -153,7 +154,7 @@ The demo creates an escrow between two distinct accounts, delivers a pinned arti
 - `contract.py` - the single canonical GenEscrow source (v1.3.0), deployed and tested.
 - `tests/` - Direct Mode suite on the real pinned runner.
 - `demo/` - `demo_two_account.py` (reviewer-runnable lifecycle) and `deliverable.py` (the pinned artifact used as evidence).
-- `scripts/` - StudioNet deploy, live scenario, gateway probes (local determinism + on-chain IPFS validator reachability), transaction verification, and video build.
+- `scripts/` - StudioNet deploy, live scenario, gateway probes (local determinism + on-chain IPFS validator reachability), deployment byte-match verification, transaction verification, and the two caption-video builds.
 - `evidence/` - raw explorer JSON for the deploy, scenario, demo, gateway reachability probe, and verification summary.
 - `README.md` - this documentation.
 
