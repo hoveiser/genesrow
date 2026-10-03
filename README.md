@@ -18,7 +18,29 @@ A decentralized escrow contract on GenLayer where deliverables must be authentic
 - Lifecycle demo: [genesrow_demo.mp4](https://github.com/hoveiser/genesrow/releases/download/v1.3.0/genesrow_demo.mp4) (68s) - the two-account escrow end to end, from the actual stdout of `demo/demo_two_account.py` run live against StudioNet.
 - Security hardening: [genesrow_security.mp4](https://github.com/hoveiser/genesrow/releases/download/v1.3.0/genesrow_security.mp4) (52s) - one segment per audit closure A1 through A5 plus the byte-match check, each showing the real on-chain result copied from `evidence/scenario.json`, `evidence/ipfs_gateways.json`, and `evidence/verify_deployment.json` (built by `scripts/build_security_video.py`).
 
-Both are hosted as GitHub release assets on the `v1.3.0` tag. Plain note on what these are and are not: there is no offline text-to-speech in the build environment, so the videos are captions-only with no voiceover. They are also not live browser screen captures (GenEscrow has no frontend); they render real transcript and evidence values, and nothing is retyped or fabricated. A GitHub release download link is not itself embeddable on platforms that require a native YouTube or X video, so if you want them embedded there you will need to re-upload the files yourself.
+Both are hosted as GitHub release assets on the `v1.3.0` tag. Plain note on what these are and are not: there is no offline text-to-speech in the build environment, so the videos are captions-only with no voiceover. They render real transcript and evidence values, and nothing is retyped or fabricated. A GitHub release download link is not itself embeddable on platforms that require a native YouTube or X video, so if you want them embedded there you will need to re-upload the files yourself.
+
+## Interactive UI (frontend/)
+
+A production React UI now lives in [frontend/](./frontend) and is the merged home of the former
+`genesrow-frontend` repo (kept only as a redirect). It lets a reviewer exercise the v1.3.0 rules
+directly in the browser: create an escrow (A1 window bounds + A4 address validation with the
+contract's own revert order), submit a delivery and watch the sha256 seal computed over the raw
+fetched bytes (A3) after the gateway allowlist parses the URL (A5), and raise a dispute to see the
+exact arbitration prompt with the sanitized structural index (A2). A security dashboard lists A1-A6
+with the on-chain validator-reachability table, and a live status card shows the deployed address,
+byte-match result, and pool balance.
+
+- **Live site:** https://hoveiser.github.io/genesrow/ (deployed from this repo via `.github/workflows/pages.yml`)
+- The UI reads the deployed StudioNet address and links every claim to a finalized explorer transaction.
+
+On-chain create, deliver, and settlement actions are demonstrated through faithful local simulation
+plus the recorded StudioNet transactions (the UI labels the verdict as a local simulation; the real
+verdicts come from on-chain AI validators). This is deliberate: ethers/viem cannot drive GenLayer
+intelligent-contract writes, and a public static site must never embed a signing key. To reproduce
+real writes, use the backend `scripts/` against your own key.
+
+Run it locally: `cd frontend && npm install && npm run dev` (build with `npm run build`).
 
 ## Changes from v1.2.0 to v1.3.0 (Milestone)
 
@@ -152,6 +174,7 @@ The demo creates an escrow between two distinct accounts, delivers a pinned arti
 
 ## Files
 - `contract.py` - the single canonical GenEscrow source (v1.3.0), deployed and tested.
+- `frontend/` - interactive React UI (merged from the former `genesrow-frontend` repo); deploys to GitHub Pages via `.github/workflows/pages.yml`. `frontend/legacy/` keeps the superseded static demo for reference.
 - `tests/` - Direct Mode suite on the real pinned runner.
 - `demo/` - `demo_two_account.py` (reviewer-runnable lifecycle) and `deliverable.py` (the pinned artifact used as evidence).
 - `scripts/` - StudioNet deploy, live scenario, gateway probes (local determinism + on-chain IPFS validator reachability), deployment byte-match verification, transaction verification, and the two caption-video builds.
