@@ -14,3 +14,6 @@ venv/
 
 # GenLayer test/deploy artifacts (the direct runner clears and recreates this)
 artifacts/
+
+# Large demo videos are published as GitHub Release assets, not tracked in git
+evidence/genesrow_ui_demo.mp4
